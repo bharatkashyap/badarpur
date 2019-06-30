@@ -17,9 +17,10 @@ const airtableBaseId = process.env.AIRTABLE_BASE_ID;
 const apiBearerToken = process.env.API_BEARER_TOKEN;
 const base = new airtable({apiKey: airtableAPIKey}).base(airtableBaseId);
 const airtableConfig = {
-    places: "Places",
+    posts: "Posts",
     comments: "Comments",
-    users: "Users"
+    users: "Users",
+    tags: "Tags"
 }
 
 if(process.env.NODE_ENV === "Development") {
@@ -36,7 +37,9 @@ app.get("/", index);
 app.get("/comments", fetchComments);
 app.get("/posts", fetchPosts);
 app.get("/post/:id", fetchPost);
+app.get("/tags", fetchTags);
 app.post("/like", validateToken, likePost);
+app.post("/comment", validateToken, postComment);
 app.post("/user", validateToken, fetchUser);
 
 
@@ -68,16 +71,16 @@ function validateToken(req, res, next) {
 }
 
 function fetchPosts(req, res) {
-    
-    base(airtableConfig.places).select({
+    res.header('Access-Control-Allow-Origin', '*');
+    base(airtableConfig.posts).select({
         sort: [{
             field: "Date", 
             direction: "desc"
         }]
     }).eachPage(function page(records, fetchNextPage) {
         // This function (`page`) will get called for each page of records.
-        res.header('Access-Control-Allow-Origin', '*');
-        res.send(records);
+        
+        res.write(JSON.stringify(records));
         
     
         // To fetch the next page of records, call `fetchNextPage`.
@@ -87,16 +90,28 @@ function fetchPosts(req, res) {
     
     }, function done(err) {
         if (err) { console.error(err); return; }
+        res.end();
     });
 }
 
 function fetchPost(req, res) {
     const id = req.params.id;
 
-    base(airtableConfig.places).find(id, (err, record) => {
+    base(airtableConfig.posts).find(id, (err, record) => {
         if(err) { console.error(err); return; res.status(501).send(err); }
         res.status(200).send(record);
     });
+}
+
+function fetchTags(req, res) {
+    res.header('Access-Control-Allow-Origin', '*');
+    base(airtableConfig.tags).select({}).eachPage( function page(records, fetchNextPage) {
+        res.write(JSON.stringify(records));
+        fetchNextPage();
+    }, function done(err) { 
+        if(err) { console.error(err); return; }
+        res.end();
+    })
 }
 
 function fetchComments() {
@@ -156,6 +171,14 @@ async function likePost(req, res) {
     });
 
     res.status(200).send(await likedPosts);
+}
+
+function postComment(req, res) {
+    console.log(req.body.payload);
+    base(airtableConfig.comments).create(req.body.payload, function(err, record) {
+        if(err) { console.error(err); return; }
+        res.status(200).send(record.getId());
+    });
 }
 
 
