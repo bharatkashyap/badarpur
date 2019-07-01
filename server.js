@@ -1,10 +1,10 @@
 const express = require('express');
 const airtable = require('airtable');
-const dotenv = require('dotenv');
 const bodyParser = require('body-parser');
 
 
 if(process.env.NODE_ENV !== "production") {
+    const dotenv = require('dotenv');
     dotenv.config();
 }
 
