@@ -25,7 +25,7 @@ const airtableConfig = {
 
 
 app.use( (req, res, next) => {
-    if(req.method === "OPTIONS") res.header('Access-Control-Allow-Origin', req.header.origin);
+    if(req.method === "OPTIONS") res.header('Access-Control-Allow-Origin', req.headers.origin ? req.headers.origin : "*");
     else res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Authorization, Accept");
     next();
