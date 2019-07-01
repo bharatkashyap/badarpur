@@ -96,7 +96,7 @@ function fetchPosts(req, res) {
 
 function fetchPost(req, res) {
     const id = req.params.id;
-
+    res.header('Access-Control-Allow-Origin', '*');
     base(airtableConfig.posts).find(id, (err, record) => {
         if(err) { console.error(err); return; res.status(501).send(err); }
         res.status(200).send(record);
@@ -141,6 +141,7 @@ async function findUser(user) {
 }
 
 async function fetchUser(req, res) {
+    res.header('Access-Control-Allow-Origin', '*');
     const user = req.body.user;
     let userExists = await findUser(user);
     
@@ -158,7 +159,7 @@ async function fetchUser(req, res) {
 }
 
 async function likePost(req, res) {
-    
+    res.header('Access-Control-Allow-Origin', '*');
     const user = req.body.user;
     const posts = req.body.posts;
     let likedPosts = new Promise( (resolve, reject) => {
@@ -174,7 +175,7 @@ async function likePost(req, res) {
 }
 
 function postComment(req, res) {
-    console.log(req.body.payload);
+    res.header('Access-Control-Allow-Origin', '*');
     base(airtableConfig.comments).create(req.body.payload, function(err, record) {
         if(err) { console.error(err); return; }
         res.status(200).send(record.getId());
