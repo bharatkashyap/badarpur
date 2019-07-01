@@ -4,7 +4,7 @@ const dotenv = require('dotenv');
 const bodyParser = require('body-parser');
 
 
-if(process.env.NODE_ENV !== "Production") {
+if(process.env.NODE_ENV !== "production") {
     dotenv.config();
 }
 
@@ -23,16 +23,17 @@ const airtableConfig = {
     tags: "Tags"
 }
 
-if(process.env.NODE_ENV === "Development") {
-    app.use( (req, res, next) => {
-        res.header("Access-Control-Allow-Origin", "*");
-        res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Authorization, Accept");
-        next();
-    })
-}
+
+app.use( (req, res, next) => {
+    if(req.method === "OPTIONS") res.header('Access-Control-Allow-Origin', req.header.origin);
+    else res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Authorization, Accept");
+    next();
+})
+
 
 app.use(bodyParser.json());
-app.use(passCors);
+
 
 app.get("/", index);
 app.get("/comments", fetchComments);
@@ -49,11 +50,6 @@ function index(req, res) {
     res.send(indexComponent.template);
 }
 
-function passCors(req, res) {
-    if(req.method === "OPTIONS") res.header('Access-Control-Allow-Origin', req.header.origin);
-    else res.header('Access-Control-Allow-Origin', '*');
-    
-}
 
 function validateToken(req, res, next) {
     const authorizationHeader = req.headers.authorization;
