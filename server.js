@@ -32,6 +32,7 @@ if(process.env.NODE_ENV === "Development") {
 }
 
 app.use(bodyParser.json());
+app.use(passCors);
 
 app.get("/", index);
 app.get("/comments", fetchComments);
@@ -46,6 +47,12 @@ app.post("/user", validateToken, fetchUser);
 const indexComponent = require('./index');
 function index(req, res) {
     res.send(indexComponent.template);
+}
+
+function passCors(req, res) {
+    if(req.method === "OPTIONS") res.header('Access-Control-Allow-Origin', req.header.origin);
+    else res.header('Access-Control-Allow-Origin', '*');
+    
 }
 
 function validateToken(req, res, next) {
@@ -71,7 +78,6 @@ function validateToken(req, res, next) {
 }
 
 function fetchPosts(req, res) {
-    res.header('Access-Control-Allow-Origin', '*');
     base(airtableConfig.posts).select({
         sort: [{
             field: "Date", 
@@ -96,7 +102,6 @@ function fetchPosts(req, res) {
 
 function fetchPost(req, res) {
     const id = req.params.id;
-    res.header('Access-Control-Allow-Origin', '*');
     base(airtableConfig.posts).find(id, (err, record) => {
         if(err) { console.error(err); return; res.status(501).send(err); }
         res.status(200).send(record);
@@ -104,7 +109,6 @@ function fetchPost(req, res) {
 }
 
 function fetchTags(req, res) {
-    res.header('Access-Control-Allow-Origin', '*');
     base(airtableConfig.tags).select({}).eachPage( function page(records, fetchNextPage) {
         res.write(JSON.stringify(records));
         fetchNextPage();
@@ -141,7 +145,6 @@ async function findUser(user) {
 }
 
 async function fetchUser(req, res) {
-    res.header('Access-Control-Allow-Origin', '*');
     const user = req.body.user;
     let userExists = await findUser(user);
     
@@ -159,7 +162,6 @@ async function fetchUser(req, res) {
 }
 
 async function likePost(req, res) {
-    res.header('Access-Control-Allow-Origin', '*');
     const user = req.body.user;
     const posts = req.body.posts;
     let likedPosts = new Promise( (resolve, reject) => {
@@ -175,7 +177,6 @@ async function likePost(req, res) {
 }
 
 function postComment(req, res) {
-    res.header('Access-Control-Allow-Origin', '*');
     base(airtableConfig.comments).create(req.body.payload, function(err, record) {
         if(err) { console.error(err); return; }
         res.status(200).send(record.getId());
