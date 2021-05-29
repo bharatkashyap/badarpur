@@ -43,7 +43,7 @@ app.get("/tags", fetchTags);
 app.post("/like", validateToken, likePost);
 app.post("/comment", validateToken, postComment);
 app.post("/user", validateToken, fetchUser);
-
+app.post("/slack", challengeResponse)
 
 const indexComponent = require('./index');
 function index(req, res) {
@@ -179,5 +179,9 @@ function postComment(req, res) {
     });
 }
 
+function challengeResponse(req,res) {
+    const { challenge } = req.body;
+    res.send(challenge).status(200);
+}
 
 app.listen(port, console.log("Backend running on port", port));
