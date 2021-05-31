@@ -1,6 +1,7 @@
 const express = require('express');
 const airtable = require('airtable');
 const bodyParser = require('body-parser');
+const https = require('https');
 
 
 if(process.env.NODE_ENV !== "production") {
@@ -15,17 +16,23 @@ let port = process.env.PORT || 3000;
 const airtableAPIKey = process.env.AIRTABLE_API_KEY;
 const airtableBaseId = process.env.AIRTABLE_BASE_ID;
 const apiBearerToken = process.env.API_BEARER_TOKEN;
+const devBearerToken = process.env.DEV_BEARER_TOKEN;
+const netlifyBuildHookToken = process.env.NETLIFY_BUILD_HOOK_TOKEN;
 const base = new airtable({apiKey: airtableAPIKey}).base(airtableBaseId);
 const airtableConfig = {
     posts: "Posts",
     comments: "Comments",
     users: "Users",
-    tags: "Tags"
+    tags: "Tags",
+    subscribers: "Subscribers"
 }
 
 
 app.use( (req, res, next) => {
-    if(req.method === "OPTIONS") res.header('Access-Control-Allow-Origin', req.headers.origin ? req.headers.origin : "*");
+    if(req.method === "OPTIONS") { 
+        res.header('Access-Control-Allow-Origin', req.headers.origin ? req.headers.origin : "*");
+        res.status(200);
+    }
     else res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Authorization, Accept");
     next();
@@ -43,7 +50,8 @@ app.get("/tags", fetchTags);
 app.post("/like", validateToken, likePost);
 app.post("/comment", validateToken, postComment);
 app.post("/user", validateToken, fetchUser);
-app.post("/slack", challengeResponse)
+app.post("/slack", slackIntegration);
+app.post("/subscribe", validateToken, createSubscriber);
 
 const indexComponent = require('./index');
 function index(req, res) {
@@ -54,8 +62,12 @@ function index(req, res) {
 function validateToken(req, res, next) {
     const authorizationHeader = req.headers.authorization;
     if(authorizationHeader) {
+        let bearerToken = null;
+        if(process.env.NODE_ENV === "production") bearerToken = apiBearerToken;
+        else bearerToken = devBearerToken;
+
         const token = authorizationHeader.split(' ')[1];
-        if (token === apiBearerToken) next();
+        if (token === bearerToken) next();
         else {
             result = {
                 status: 401,
@@ -179,9 +191,54 @@ function postComment(req, res) {
     });
 }
 
-function challengeResponse(req,res) {
-    const { challenge } = req.body;
+function createSubscriber(req, res) {
+    
+    base(airtableConfig.subscribers).create(req.body, function(err, record) {
+        if(err) { console.error(err); res.status(500).send(); return; }
+        res.status(200).send(record.getId());
+    });
+}
+
+function slackIntegration(req,res) {
+    
+    const { challenge, event: { text = "" } = {} } = req.body;    
+    const shouldTrigger = text.search(/netlify deploy auraq/g) >= 0;
+    if(shouldTrigger) {
+        triggerDeploy();
+    }       
     res.send(challenge).status(200);
+}
+
+function triggerDeploy() {
+
+    const data = JSON.stringify({
+        trigger_branch: 'master',
+        trigger_title: 'Deployed from Airtable via Slack Bot'
+    });
+
+    const options = {
+          method: "POST",
+          hostname: "api.netlify.com",
+          path: `/build_hooks/${netlifyBuildHookToken}`,
+          headers: {
+           "Content-Type": "application/json",
+           "Content-Length": data.length
+          }
+        };    
+
+    const req = https.request(options, response => {
+        response.on('data', d => {
+            process.stdout.write(d);
+        })
+        console.log(`statusCode: ${response.statusCode}`);
+    });
+
+    req.on('error', error => {
+        console.error(`error: ${error}`);
+    })
+
+    req.write(data);
+    req.end();
 }
 
 app.listen(port, console.log("Backend running on port", port));
