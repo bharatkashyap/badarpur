@@ -51,7 +51,7 @@ app.post("/like", validateToken, likePost);
 app.post("/comment", validateToken, postComment);
 app.post("/user", validateToken, fetchUser);
 app.post("/slack", slackIntegration);
-app.post("/subscribe", validateToken, createSubscriber);
+app.post("/subscribe", createSubscriber);
 
 const indexComponent = require('./index');
 function index(req, res) {
