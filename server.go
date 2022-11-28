@@ -1,15 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
-	"regexp"
-
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/joho/godotenv"
 )
@@ -21,6 +21,7 @@ func main() {
         log.Fatal("Error loading .env file")
     }
 	http.HandleFunc("/", handleIndex)
+	http.HandleFunc("/subscribe", handleSubscription)
 	http.HandleFunc("/slack", handleSlackIntegration)	
 	
 	log.Fatal(http.ListenAndServe(":8000", nil))
@@ -33,6 +34,60 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
     }
 	htmlString := string(html)	
 	fmt.Fprint(w, htmlString)
+}
+
+func handleSubscription(w http.ResponseWriter, r *http.Request) {
+	type AuraqHandleSubscriptionRequest struct {
+		Email string `json:"email"`
+	}
+	var subscriptionRequest AuraqHandleSubscriptionRequest
+	err := json.NewDecoder(r.Body).Decode(&subscriptionRequest)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+			
+	type AirtableCreateSubscriberRequest struct {
+		Records []struct {
+			Fields struct {
+				Email string `json:"email"`
+			} `json:"fields"`
+		} `json:"records"`
+	}
+	var airtableCreateSubscriberRequest AirtableCreateSubscriberRequest
+	airtableCreateSubscriberRequest.Records = append(airtableCreateSubscriberRequest.Records, struct {
+		Fields struct {
+			Email string `json:"email"`
+		} `json:"fields"`
+	}{Fields: struct {
+		Email string `json:"email"`
+	}{Email: subscriptionRequest.Email}})
+	
+	
+	
+	airtableCreateSubscriberRequestObj, requestParseError := json.Marshal(airtableCreateSubscriberRequest)
+	if requestParseError != nil {
+		log.Fatalf(requestParseError.Error())
+	}
+	
+
+	path := fmt.Sprintf("%s/%s/%s", os.Getenv("AIRTABLE_API_URL"), os.Getenv("AIRTABLE_BASE"), "Subscribers")	
+
+	request, requestError := http.NewRequest("POST", path, bytes.NewBuffer(airtableCreateSubscriberRequestObj))
+
+	if requestError != nil {
+		log.Fatalf(requestError.Error())
+	}
+
+	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("AIRTABLE_API_KEY")))
+
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	fmt.Fprint(w, response.Status)
 }
 
 type AirtablePics []struct {
