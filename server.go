@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -105,7 +106,7 @@ func handleSlackIntegration(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&slackBotEventNotification)	
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return	
 	}
 
 	regex, _ := regexp.Compile("rec.*")
@@ -113,7 +114,14 @@ func handleSlackIntegration(w http.ResponseWriter, r *http.Request) {
 
 	airtablePicRecords := make(chan AirtablePics)
 	go retrievePost(postId, airtablePicRecords)
-	createPostImageDirectory(postId, <-airtablePicRecords)
+	
+	createdPicsCount := make(chan int)	
+	go createPostImageDirectory(postId, <-airtablePicRecords, createdPicsCount)
+	
+	if <-createdPicsCount == len(<-airtablePicRecords) {
+	fmt.Fprint(w, triggerDeploy(postId))
+	}
+	
 		
 }
 
@@ -170,7 +178,7 @@ func downloadPic(url string, dir string, name string, res chan os.File) {
 	defer file.Close()
 }
 
-func createPostImageDirectory(postId string, airtablePics AirtablePics) {
+func createPostImageDirectory(postId string, airtablePics AirtablePics, res chan int) {
 	path := filepath.Join("static",postId)
 	os.RemoveAll(path)
 	os.Mkdir(path, 0755)	
@@ -179,14 +187,48 @@ func createPostImageDirectory(postId string, airtablePics AirtablePics) {
 		go downloadPic(pic.Url, path, fmt.Sprint(index), file)
 		fmt.Print(<-file)
 	}
+	files, _ := ioutil.ReadDir(path)
+	res <- len(files)
 }
 
 
+func triggerDeploy(postId string) string {
+	// Translate the beloe code to Go from Javascript
+	type NetlifyDeploy struct {
+		Trigger_Branch string `json:"trigger_branch"`
+		Trigger_Title string `json:"trigger_title"`
+	}
 
-// func triggerDeploy(text string) {
+	var netlifyDeploy NetlifyDeploy = NetlifyDeploy{
+		Trigger_Branch: "master",
+		Trigger_Title: postId,
+	}
+
+	netlifyDeployObj, requestParseError := json.Marshal(netlifyDeploy)
+	if requestParseError != nil {
+		log.Fatalf(requestParseError.Error())
+	}
+
+	path := fmt.Sprintf("%s/%s/%s", os.Getenv("NETLIFY_API_URL"), "build_hooks", os.Getenv("NETLIFY_BUILD_HOOK_TOKEN"))
+	request, requestError := http.NewRequest("POST", path, bytes.NewBuffer(netlifyDeployObj))
+
+	if requestError != nil {
+		log.Fatalf(requestError.Error())
+	}
+
+	request.Header.Set("Content-Type", "application/json; charset=UTF-8")	
+
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+	
+	return response.Status
+
 	
 	
-// }
+}
 // func handleNewScreenshot(w http.ResponseWriter, r *http.Request) {
 
 // 	type ScreenshotRequest struct {
