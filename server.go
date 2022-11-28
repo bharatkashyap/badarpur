@@ -97,10 +97,11 @@ type AirtablePics []struct {
 
 func handleSlackIntegration(w http.ResponseWriter, r *http.Request) {
 	type SlackBotEventNotification struct {
+		Challenge string `json:"challenge"`
 		Event struct {
-			Text string `json:"text"`
-			Challenge string `json:"challenge"`
+			Text string `json:"text"`			
 		} `json:"event"`
+		
 	}
 
 	var slackBotEventNotification SlackBotEventNotification
@@ -129,7 +130,7 @@ func handleSlackIntegration(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Success")
 		}
 	}
-	fmt.Fprint(w, slackBotEventNotification.Event.Challenge)
+	fmt.Fprint(w, slackBotEventNotification.Challenge)
 	
 		
 }
