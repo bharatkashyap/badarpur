@@ -99,6 +99,7 @@ func handleSlackIntegration(w http.ResponseWriter, r *http.Request) {
 	type SlackBotEventNotification struct {
 		Event struct {
 			Text string `json:"text"`
+			Challenge string `json:"challenge"`
 		} `json:"event"`
 	}
 
@@ -109,20 +110,26 @@ func handleSlackIntegration(w http.ResponseWriter, r *http.Request) {
 		return	
 	}
 
+	
+
 	regex, _ := regexp.Compile("rec.*")
 	postId := regex.FindString(slackBotEventNotification.Event.Text)	
 
-	airtablePicRecords := make(chan AirtablePics)
-	go retrievePost(postId, airtablePicRecords)
+	if(len(postId) != 0) {
+
+		airtablePicRecords := make(chan AirtablePics)
+		go retrievePost(postId, airtablePicRecords)
 	
-	createdPicsCount := make(chan int)	
-	airtablePics := <- airtablePicRecords
-	go createPostImageDirectory(postId, airtablePics, createdPicsCount)
+		createdPicsCount := make(chan int)	
+		airtablePics := <- airtablePicRecords
+		go createPostImageDirectory(postId, airtablePics, createdPicsCount)
 		
-	if <-createdPicsCount == len(airtablePics) {
+		if <-createdPicsCount == len(airtablePics) {
 	// fmt.Fprint(w, triggerDeploy(postId))
-	fmt.Fprint(w, "Success")
+		fmt.Fprint(w, "Success")
+		}
 	}
+	fmt.Fprint(w, slackBotEventNotification.Event.Challenge)
 	
 		
 }
