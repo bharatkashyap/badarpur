@@ -126,8 +126,7 @@ func handleSlackIntegration(w http.ResponseWriter, r *http.Request) {
 		go createPostImageDirectory(postId, airtablePics, createdPicsCount)
 		
 		if <-createdPicsCount == len(airtablePics) {
-		// fmt.Fprint(w, triggerDeploy(postId))
-		fmt.Fprint(w, "Success")
+		fmt.Fprint(w, triggerDeploy(postId))		
 		}
 	}
 	fmt.Fprint(w, slackBotEventNotification.Challenge)
