@@ -48,4 +48,4 @@ jobs:
         run: go build
 
       - name: Deploy files with rsync
-        run: rsync -avz ./badarpur ./static ${{ secrets.SSH_USER }}@${{ secrets.HOST }}:/home/
+        run: rsync -avz ./badarpur ${{ secrets.SSH_USER }}@${{ secrets.HOST }}:/home/
