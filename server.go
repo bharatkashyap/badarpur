@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,13 +23,12 @@ func main() {
         log.Fatal("Error loading .env file")
     }
 	http.HandleFunc("/", handleIndex)
-	http.HandleFunc("/subscribe", handleSubscription)
-	http.HandleFunc("/slack", handleSlackIntegration)	
-	
+	http.HandleFunc("/subscribers", handleSubscription)
+	http.HandleFunc("/slack", handleSlackIntegration)		
 	log.Fatal(http.ListenAndServe(":8000", nil))
 }
 
-func handleIndex(w http.ResponseWriter, r *http.Request) {	
+func handleIndex(w http.ResponseWriter, r *http.Request) {		
 	html, err := os.ReadFile("./static/index.html")
 	if err != nil {
         fmt.Print(err)
@@ -37,58 +37,98 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, htmlString)
 }
 
-func handleSubscription(w http.ResponseWriter, r *http.Request) {
-	type AuraqHandleSubscriptionRequest struct {
-		Email string `json:"email"`
+// List of allowed origins
+var allowedOrigins = []string{
+	"http://localhost:8080",
+	"https://auraq.in",
+}
+
+func isValidOrigin(origin string) bool {
+	// Check if the origin is present in the allowed origins whitelist
+	for _, allowedOrigin := range allowedOrigins {
+		if origin == allowedOrigin {
+			return true
+		}
 	}
-	var subscriptionRequest AuraqHandleSubscriptionRequest
-	err := json.NewDecoder(r.Body).Decode(&subscriptionRequest)
-	if err != nil {
-		log.Fatalf(err.Error())
+	return false
+}
+
+func enableCors(w *http.ResponseWriter, origin string) {
+	// Set CORS headers for the preflight request
+		// Allows GETs from origin https://auraq.in with Authorization header		
+		// Check if the origin is present in the allowed origins whitelist
+		if isValidOrigin(origin) {
+			// Add the CORS header			
+			(*w).Header().Set("Access-Control-Allow-Origin", origin)
+		}		
+			(*w).Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			(*w).Header().Set("Access-Control-(*A)llow-Methods", "POST")
+			(*w).Header().Set("Access-Control-All(*o)w-Credentials", "true")	
 	}
-			
-	type AirtableCreateSubscriberRequest struct {
-		Records []struct {
-			Fields struct {
-				Email string `json:"email"`
-			} `json:"fields"`
-		} `json:"records"`
-	}
-	var airtableCreateSubscriberRequest AirtableCreateSubscriberRequest
-	airtableCreateSubscriberRequest.Records = append(airtableCreateSubscriberRequest.Records, struct {
-		Fields struct {
+
+func handleSubscription(w http.ResponseWriter, r *http.Request)  {	
+	enableCors(&w, r.Header.Get("Origin"))	
+
+	if(r.Method == "POST") {
+		type AuraqHandleSubscriptionRequest struct {
 			Email string `json:"email"`
-		} `json:"fields"`
-	}{Fields: struct {
-		Email string `json:"email"`
-	}{Email: subscriptionRequest.Email}})
-	
-	
-	
-	airtableCreateSubscriberRequestObj, requestParseError := json.Marshal(airtableCreateSubscriberRequest)
-	if requestParseError != nil {
-		log.Fatalf(requestParseError.Error())
+		}
+		
+		var subscriptionRequest AuraqHandleSubscriptionRequest	
+		err := json.NewDecoder(r.Body).Decode(&subscriptionRequest)
+		if err != nil {
+			log.Fatalf(err.Error())
+		}	
+		
+		/*
+		email	Request body	String	Required	The email address of the new susbcriber.
+		name	Request body	String	Required	The name of the new subscriber.
+		status	Request body	String	Required	The status of the new subscriber. Can be enabled, disabled or blocklisted.
+		lists	Request body	Numbers	Optional	Array of list IDs to subscribe to (marked as unconfirmed by default).
+		attribs	Request body	json	Optional	JSON list containing new subscriber's attributes.
+		preconfirm_subscriptions	Request body	Bool	Optional	If true, marks subscriptsions as confirmed and no-optin e-mails are sent for double opt-in lists.
+		*/ 
+
+		type ListmonkCreateSubscriberRequest struct {
+			Email string `json:"email"`
+			Name string `json:"name"`
+			Status string `json:"status"`
+			Lists []int `json:"lists"`		
+		}
+					
+		var listmonkCreateSubscriberRequest ListmonkCreateSubscriberRequest
+		listmonkCreateSubscriberRequest.Email = subscriptionRequest.Email	
+		listmonkCreateSubscriberRequest.Name = subscriptionRequest.Email
+		listmonkCreateSubscriberRequest.Status = "enabled"	
+		listmonkCreateSubscriberRequest.Lists = []int{2}
+
+		listmonkCreateSubscriberRequestObj, requestParseError := json.Marshal(listmonkCreateSubscriberRequest)
+		
+		if requestParseError != nil {
+			log.Fatalf(requestParseError.Error())
+		}	
+		path := fmt.Sprintf("%s/%s", os.Getenv("LISTMONK_API_URL"), "subscribers")	
+
+
+		request, requestError := http.NewRequest("POST", path, bytes.NewBuffer(listmonkCreateSubscriberRequestObj))
+
+		if requestError != nil {
+			log.Fatalf(requestError.Error())
+		}
+
+		request.Header.Set("Content-Type", "application/json; charset=UTF-8")
+		request.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", os.Getenv("LISTMONK_USERNAME"), os.Getenv("LISTMONK_PASSWORD"))))))
+
+		client := &http.Client{}
+		response, err := client.Do(request)
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+				
+		
+		fmt.Fprint(w, response.Status)
 	}
-	
 
-	path := fmt.Sprintf("%s/%s/%s", os.Getenv("AIRTABLE_API_URL"), os.Getenv("AIRTABLE_BASE"), "Subscribers")	
-
-	request, requestError := http.NewRequest("POST", path, bytes.NewBuffer(airtableCreateSubscriberRequestObj))
-
-	if requestError != nil {
-		log.Fatalf(requestError.Error())
-	}
-
-	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("AIRTABLE_API_KEY")))
-
-	client := &http.Client{}
-	response, err := client.Do(request)
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-
-	fmt.Fprint(w, response.Status)
 }
 
 type AirtablePics []struct {
@@ -111,8 +151,6 @@ func handleSlackIntegration(w http.ResponseWriter, r *http.Request) {
 		return	
 	}
 
-	
-
 	regex, _ := regexp.Compile("rec.*")
 	postId := regex.FindString(slackBotEventNotification.Event.Text)	
 
@@ -129,9 +167,7 @@ func handleSlackIntegration(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, triggerDeploy(postId))		
 		}
 	}
-	fmt.Fprint(w, slackBotEventNotification.Challenge)
-	
-		
+	fmt.Fprint(w, slackBotEventNotification.Challenge)		
 }
 
 func retrievePost(id string, res chan AirtablePics ) {
@@ -199,7 +235,6 @@ func createPostImageDirectory(postId string, airtablePics AirtablePics, res chan
 	files, _ := ioutil.ReadDir(path)
 	res <- len(files)
 }
-
 
 func triggerDeploy(postId string) string {	
 	type NetlifyDeploy struct {
