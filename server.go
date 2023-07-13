@@ -106,6 +106,7 @@ func handleSubscription(w http.ResponseWriter, r *http.Request) {
 			log.Fatalf(requestParseError.Error())
 		}
 		path := fmt.Sprintf("%s/%s", os.Getenv("LISTMONK_API_URL"), "subscribers")
+		log.Default().Println(path)
 
 		request, requestError := http.NewRequest("POST", path, bytes.NewBuffer(listmonkCreateSubscriberRequestObj))
 
@@ -118,6 +119,7 @@ func handleSubscription(w http.ResponseWriter, r *http.Request) {
 
 		client := &http.Client{}
 		response, err := client.Do(request)
+		log.Default().Println(response)
 		if err != nil {
 			log.Fatalf(err.Error())
 		}
