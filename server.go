@@ -63,6 +63,7 @@ func enableCors(w *http.ResponseWriter, origin string) {
 	// Set CORS headers for the preflight request
 	// Allows requests from origin https://www.auraq.in with Authorization header
 	// Check if the origin is present in the allowed origins whitelist
+
 	if isValidOrigin(origin) {
 		// Add the CORS header
 		(*w).Header().Set("Access-Control-Allow-Origin", origin)
@@ -74,6 +75,10 @@ func enableCors(w *http.ResponseWriter, origin string) {
 
 func handleSubscription(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w, r.Header.Get("Origin"))
+
+	if r.Method == "OPTIONS" {
+		return // preflight request
+	}
 
 	if r.Method == "POST" {
 		type AuraqHandleSubscriptionRequest struct {
