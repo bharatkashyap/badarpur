@@ -119,7 +119,7 @@ func handleSubscription(w http.ResponseWriter, r *http.Request) {
 
 		client := &http.Client{}
 		response, err := client.Do(request)
-		log.Default().Println(response)
+		log.Default().Println(response.Status)
 		if err != nil {
 			log.Fatalf(err.Error())
 		}
