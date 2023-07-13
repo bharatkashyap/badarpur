@@ -47,11 +47,14 @@ func handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 var allowedOrigins = []string{
 	"https://www.auraq.in",
 	"https://auraq.in",
+	"http://localhost:8080",
 }
 
 func handleSubscription(w http.ResponseWriter, r *http.Request) {
 
+	// Get the value of the "Origin" header
 	origin := r.Header.Get("Origin")
+
 	// Set CORS headers for the preflight request
 	// Allows requests from origin https://www.auraq.in with Authorization header
 	// Check if the origin is present in the allowed origins whitelist
@@ -121,6 +124,11 @@ func handleSubscription(w http.ResponseWriter, r *http.Request) {
 		}
 
 		fmt.Fprint(w, response.Status)
+	}
+
+	if r.Method == "GET" {
+		html := fmt.Sprintf("<html><body style=\"font-family: sans-serif\"><h1>OK</h1><p>Origin: %s</p></body></html>", r.Host)
+		fmt.Fprint(w, html)
 	}
 
 }
