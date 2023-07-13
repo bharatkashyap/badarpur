@@ -23,6 +23,7 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 	http.HandleFunc("/", handleIndex)
+	http.HandleFunc("/health-check", handleHealthCheck)
 	http.HandleFunc("/subscribers", handleSubscription)
 	http.HandleFunc("/slack", handleSlackIntegration)
 	log.Fatal(http.ListenAndServe(":8000", nil))
@@ -35,6 +36,11 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	htmlString := string(html)
 	fmt.Fprint(w, htmlString)
+}
+
+func handleHealthCheck(w http.ResponseWriter, r *http.Request) {
+	html := `<html><body style="font-family: sans-serif"><h1>OK</h1></body></html>`
+	fmt.Fprint(w, html)
 }
 
 // List of allowed origins
