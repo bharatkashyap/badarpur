@@ -49,35 +49,21 @@ var allowedOrigins = []string{
 	"https://auraq.in",
 }
 
-func isValidOrigin(origin string) bool {
-	// Check if the origin is present in the allowed origins whitelist
-	for _, allowedOrigin := range allowedOrigins {
-		if origin == allowedOrigin {
-			return true
-		}
-	}
-	return false
-}
+func handleSubscription(w http.ResponseWriter, r *http.Request) {
 
-func enableCors(w *http.ResponseWriter, origin string) {
+	origin := r.Header.Get("Origin")
 	// Set CORS headers for the preflight request
 	// Allows requests from origin https://www.auraq.in with Authorization header
 	// Check if the origin is present in the allowed origins whitelist
-
-	if isValidOrigin(origin) {
-		// Add the CORS header
-		(*w).Header().Set("Access-Control-Allow-Origin", origin)
+	for _, allowedOrigin := range allowedOrigins {
+		if origin == allowedOrigin {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		}
 	}
-	// (*w).Header().Set("Access-Control-Allow-Origin", "*")
-	(*w).Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	(*w).Header().Set("Access-Control-(*A)llow-Methods", "POST")
-	(*w).Header().Set("Access-Control-All(*o)w-Credentials", "true")
-}
 
-func handleSubscription(w http.ResponseWriter, r *http.Request) {
-	// enableCors(&w, r.Header.Get("Origin"))
-
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-(*A)llow-Methods", "POST")
+	w.Header().Set("Access-Control-All(*o)w-Credentials", "true")
 
 	if r.Method == "POST" {
 		type AuraqHandleSubscriptionRequest struct {
