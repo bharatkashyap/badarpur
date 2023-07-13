@@ -47,7 +47,6 @@ func handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 var allowedOrigins = []string{
 	"https://www.auraq.in",
 	"https://auraq.in",
-	"http://localhost:8080",
 }
 
 func handleSubscription(w http.ResponseWriter, r *http.Request) {
