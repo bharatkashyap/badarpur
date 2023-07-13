@@ -39,7 +39,6 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 
 // List of allowed origins
 var allowedOrigins = []string{
-	"http://localhost:8080",
 	"https://www.auraq.in",
 	"https://auraq.in",
 }
@@ -56,7 +55,7 @@ func isValidOrigin(origin string) bool {
 
 func enableCors(w *http.ResponseWriter, origin string) {
 	// Set CORS headers for the preflight request
-	// Allows GETs from origin https://auraq.in with Authorization header
+	// Allows requests from origin https://www.auraq.in with Authorization header
 	// Check if the origin is present in the allowed origins whitelist
 	if isValidOrigin(origin) {
 		// Add the CORS header
