@@ -64,10 +64,11 @@ func enableCors(w *http.ResponseWriter, origin string) {
 	// Allows requests from origin https://www.auraq.in with Authorization header
 	// Check if the origin is present in the allowed origins whitelist
 
-	if isValidOrigin(origin) {
-		// Add the CORS header
-		(*w).Header().Set("Access-Control-Allow-Origin", origin)
-	}
+	// if isValidOrigin(origin) {
+	// 	// Add the CORS header
+	// 	(*w).Header().Set("Access-Control-Allow-Origin", origin)
+	// }
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
 	(*w).Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	(*w).Header().Set("Access-Control-(*A)llow-Methods", "POST")
 	(*w).Header().Set("Access-Control-All(*o)w-Credentials", "true")
@@ -75,10 +76,6 @@ func enableCors(w *http.ResponseWriter, origin string) {
 
 func handleSubscription(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w, r.Header.Get("Origin"))
-
-	if r.Method == "OPTIONS" {
-		return // preflight request
-	}
 
 	if r.Method == "POST" {
 		type AuraqHandleSubscriptionRequest struct {
