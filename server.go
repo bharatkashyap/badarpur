@@ -134,6 +134,24 @@ type AirtablePics []struct {
 }
 
 func handleSlackIntegration(w http.ResponseWriter, r *http.Request) {
+	  // Log request details
+	  log.Printf("Received request: Method: %s, URL: %s\n", r.Method, r.URL)
+
+	  // Check request method
+	  if r.Method == http.MethodGet {
+		// Log GET request and return default HTML
+		log.Println("Received GET request, returning default HTML")
+		fmt.Fprintf(w, "This is a Slack integration endpoint. It expects POST requests.")
+		return
+	  }
+	
+	  // Proceed if request method is POST (assuming POST for integration)
+	  if r.Method != http.MethodPost {
+		log.Printf("Unsupported method: %s\n", r.Method)
+		http.Error(w, "Unsupported request method", http.StatusMethodNotAllowed)
+		return
+	  }
+	  
 	type SlackBotEventNotification struct {
 		Challenge string `json:"challenge"`
 		Event     struct {
